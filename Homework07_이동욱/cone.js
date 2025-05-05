@@ -32,15 +32,6 @@ export class Cone {
         const defaultColor = [0.8, 0.8, 0.8, 1.0];
         const colorOption = options.color || defaultColor;
 
-        // 각 세그먼트별로 사각형(face)을 만든다.
-        // 사각형 정점 순서(외부에서 본 CCW): top0 -> top1 -> bot1 -> bot0
-        //  - top0: angle0, y= +0.5
-        //  - top1: angle1, y= +0.5
-        //  - bot1: angle1, y= -0.5
-        //  - bot0: angle0, y= -0.5
-        //
-        // 인덱스는 (0,1,2), (2,3,0)로 두 삼각형을 구성.
-        // 이 순서가 외부에서 볼 때 CCW가 되도록 정렬합니다.
         for (let i = 0; i < segments; i++) {
             const angle0 = i * angleStep;
             const angle1 = (i + 1) * angleStep;
