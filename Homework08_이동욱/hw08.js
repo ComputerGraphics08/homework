@@ -159,7 +159,7 @@ async function main() {
         shader.setVec3("light.diffuse", vec3.fromValues(0.7, 0.7, 0.7));
         shader.setVec3("light.specular", vec3.fromValues(1.0, 1.0, 1.0));
         shader.setVec3("material.diffuse", vec3.fromValues(1.0, 0.5, 0.31));
-        shader.setVec3("material.specular", vec3.fromValues(0.8, 0.8, 0.8));
+        shader.setVec3("material.specular", vec3.fromValues(0.5, 0.5, 0.5));
         shader.setFloat("material.shininess", shininess);
         shader.setVec3("u_viewPos", cameraPos);
         shader.setInt("u_toonLevel", toonLevels);

@@ -50,36 +50,38 @@ void main() {
      
 
     if (diff <= 1.0){
-        diff = 0.5 / level;
+        diff = 0.0 / level;
     }
     else if (diff <= 2.0){
-        diff = 1.5 / level;
+        diff = 1.0 / level;
     }
     else if (diff <= 3.0){
-        diff = 2.5 / level;
+        diff = 2.0 / level;
     }
     else if (diff <= 4.0){
-        diff = 3.5 / level;
+        diff = 3.0 / level;
     }
     else{
-        diff = 4.5 / level;
+        diff = 4.0 / level;
     }
 
     if (spec <= 1.0){
-        spec = 0.5 / level;
+        spec = 0.0 / level;
     }
     else if (spec <= 2.0){
-        spec = 1.5 / level;
+        spec = 1.0 / level;
     }
     else if (spec <= 3.0){
-        spec = 2.5 / level;
+        spec = 2.0 / level;
     }
     else if (spec <= 4.0){
-        spec = 3.5 / level;
+        spec = 3.0 / level;
     }
     else{
-        spec = 4.5 / level;
+        spec = 4.0 / level;
     }
+
+
 
     vec3 diffuse = light.diffuse * diff * material.diffuse;
     vec3 specular = light.specular * spec * material.specular;  
