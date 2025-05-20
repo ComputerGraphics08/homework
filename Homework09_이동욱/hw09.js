@@ -199,7 +199,9 @@ function setupControls() {
 
   const gui = new GUI();
   const folder0 = gui.addFolder("Camera");
-  folder0.add(controls.folder0Params, "switchCameraType").name("Switch Camera");
+  folder0
+    .add(controls.folder0Params, "switchCameraType")
+    .name("Switch Camera Type");
   folder0
     .add(controls.folder0Params, "perspective")
     .name("Current Camera")
