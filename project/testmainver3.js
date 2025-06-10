@@ -25,6 +25,7 @@ let mainObjectBodies = [];
 let mainObjects = [];
 let floorBody;
 let targetDoorBody;
+const objectMixers = [];
 
 // 발사된 페인트 오브젝트들을 관리하는 배열
 let paintProjectiles = [];
@@ -267,6 +268,39 @@ function createMap() {
     );
     world.createCollider(mainObjectColliderDesc, mainObjectBody);
     mainObjectBodies.push(mainObjectBody);
+
+    // 인덱스 1과 2에만 왕복 애니메이션 적용
+    if (mainObjects.length === 2 || mainObjects.length === 3) {
+      const mesh = mainObject;
+
+      const x0 = mesh.position.x;
+      const x1 = x0 - 10;
+
+      const times = [0, 2, 4];
+      const values = [
+        x0,
+        mesh.position.y,
+        mesh.position.z,
+        x1,
+        mesh.position.y,
+        mesh.position.z,
+        x0,
+        mesh.position.y,
+        mesh.position.z,
+      ];
+
+      const track = new THREE.VectorKeyframeTrack(".position", times, values);
+      const clip = new THREE.AnimationClip("objectBounce", -1, [track]);
+
+      const mixer = new THREE.AnimationMixer(mesh);
+      const action = mixer.clipAction(clip);
+      action.setLoop(THREE.LoopRepeat);
+      action.play();
+
+      objectMixers.push(mixer);
+    } else {
+      objectMixers.push(null); // 다른 오브젝트는 null 처리
+    }
   });
 
   const wallPositions = [
@@ -543,7 +577,7 @@ function updatePaintProjectiles(deltaTime) {
     );
     const intersects = paintRaycaster.intersectObjects(walls);
 
-    if (intersects.length > 0 && intersects[0].distance < 0.2) {
+    if (intersects.length > 0 && intersects[0].distance < 0.4) {
       createPaintSplash(intersects[0], paint.color);
       scene.remove(paint.object);
       paintProjectiles.splice(i, 1);
@@ -562,7 +596,7 @@ function updatePaintProjectiles(deltaTime) {
 function createPaintSplash(hit, color = "red") {
   const pointKey = hit.point
     .clone()
-    .divideScalar(0.1) // 좌표 정규화
+    .divideScalar(0.1)
     .floor()
     .toArray()
     .join(",");
@@ -575,7 +609,7 @@ function createPaintSplash(hit, color = "red") {
   let effectiveColor = color;
   const colorSet = splashMap.get(pointKey);
   if (colorSet.has("red") && colorSet.has("blue")) {
-    effectiveColor = "purple"; // 보라색
+    effectiveColor = "purple";
   }
 
   const splashColor =
@@ -583,9 +617,10 @@ function createPaintSplash(hit, color = "red") {
       ? 0x3c3cff
       : effectiveColor === "red"
       ? 0xff3c3c
-      : 0xaa00aa; // 보라색
+      : 0xaa00aa;
 
   const paintGeom = new THREE.CircleGeometry(0.15, 24);
+  paintGeom.computeBoundingBox();
   const splashMaterial = new THREE.MeshStandardMaterial({
     color: splashColor,
     transparent: true,
@@ -595,29 +630,79 @@ function createPaintSplash(hit, color = "red") {
   });
 
   const splash = new THREE.Mesh(paintGeom, splashMaterial);
+  splash.userData.color = effectiveColor;
+
+  // 자국 위치 설정: hit 위치에서 약간 돌출
   splash.position
     .copy(hit.point)
     .add(hit.face.normal.clone().multiplyScalar(0.01));
 
+  // 위치: 월드에서 로컬로 변환
+  hit.object.worldToLocal(splash.position);
+
+  // 방향: 월드 회전 → 로컬 회전으로 보정
   const normal = hit.face.normal.clone().normalize();
   const quaternion = new THREE.Quaternion();
   quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
   splash.quaternion.copy(quaternion);
+  splash.quaternion.premultiply(hit.object.quaternion.clone().invert());
 
-  scene.add(splash);
+  // 부모에 추가
+  hit.object.add(splash);
 
+  // 겹치는 자국 보라색 처리
+  splash.updateMatrixWorld();
+  splash.geometry.computeBoundingBox();
+  const box1 = splash.geometry.boundingBox.clone();
+  box1.applyMatrix4(splash.matrixWorld);
+
+  for (const other of scene.children) {
+    if (
+      other !== splash &&
+      other.geometry &&
+      other.geometry.boundingBox &&
+      other.userData.color &&
+      (other.userData.color === "red" || other.userData.color === "blue")
+    ) {
+      other.updateMatrixWorld();
+      const box2 = other.geometry.boundingBox.clone();
+      box2.applyMatrix4(other.matrixWorld);
+
+      if (box1.intersectsBox(box2)) {
+        const c1 = splash.userData.color;
+        const c2 = other.userData.color;
+
+        if (
+          (c1 === "red" && c2 === "blue") ||
+          (c1 === "blue" && c2 === "red")
+        ) {
+          splash.material.color.set(0xaa00aa);
+          splash.userData.color = "purple";
+          other.material.color.set(0xaa00aa);
+          other.userData.color = "purple";
+        }
+      }
+    }
+  }
+
+  // 문 해금 조건 처리
   for (const obj of mainObjects) {
-    if (hit.object === obj.mesh && effectiveColor === obj.requiredColor) {
-      obj.hitCount += 1;
-      if (obj.hitCount === 3 && !obj.unlocked) {
-        obj.unlocked = true;
-        obj.mesh.material.color.set(splashColor);
+    if (hit.object === obj.mesh) {
+      const finalColor = splash.userData.color;
 
-        const allUnlocked = mainObjects
-          .filter((o) => o.doorIndex === obj.doorIndex)
-          .every((o) => o.unlocked);
+      if (finalColor === obj.requiredColor) {
+        obj.hitCount += 1;
 
-        if (allUnlocked) openDoor(obj.doorIndex);
+        if (obj.hitCount === 3 && !obj.unlocked) {
+          obj.unlocked = true;
+          obj.mesh.material.color.set(splash.material.color);
+
+          const allUnlocked = mainObjects
+            .filter((o) => o.doorIndex === obj.doorIndex)
+            .every((o) => o.unlocked);
+
+          if (allUnlocked) openDoor(obj.doorIndex);
+        }
       }
       break;
     }
@@ -853,6 +938,9 @@ function animate(currentTime = 0) {
         );
       }
     }
+  }
+  for (let mixer of objectMixers) {
+    if (mixer) mixer.update(deltaTime);
   }
 
   renderer.render(scene, camera);
