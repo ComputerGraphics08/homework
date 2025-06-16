@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
 
 let scene, camera, renderer;
 let walls = [];
@@ -6,6 +7,28 @@ let floor;
 let mouseX = 0,
   mouseY = 0;
 let isPointerLocked = false;
+const loader = new FBXLoader();
+let painter;
+
+loader.load("painter.fbx", function (object) {
+  object.traverse(function (child) {
+    if (child.isMesh) {
+      child.castShadow = true;
+    }
+  });
+
+  // painter 모델 설정
+  painter = object;
+  painter.scale.set(0.001, 0.001, 0.001); // 조금 작게
+  painter.position.set(0.5, -0.4, -1.2); // 자연스러운 손 위치
+  painter.rotation.set(0, Math.PI, 0); // 앞을 향하도록
+
+  // 카메라에 부착
+  camera.add(painter);
+
+  // 카메라도 scene에 추가해야 동작
+  scene.add(camera);
+});
 
 // 플레이어 설정
 const player = {
@@ -38,21 +61,36 @@ function init() {
   camera.position.copy(player.position);
 
   renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.setClearColor(0xffffff);
   document.body.appendChild(renderer.domElement);
 
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+  const position = new THREE.Vector3(0, 10, 0);
+  const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+  directionalLight1.position.copy(position);
+  directionalLight1.shadow.mapSize.width = 2048;
+  directionalLight1.shadow.mapSize.height = 2048;
+  directionalLight1.shadow.camera.fov = 15;
+  directionalLight1.name = "directionalLight1";
+  scene.add(directionalLight1);
+
+  const spotLight = new THREE.SpotLight(0xffffff, 100);
+  spotLight.position.copy(position);
+  spotLight.shadow.mapSize.width = 2048;
+  spotLight.shadow.mapSize.height = 2048;
+  spotLight.shadow.camera.fov = 15;
+  spotLight.castShadow = true;
+  spotLight.decay = 2;
+  spotLight.penumbra = 0.05;
+  spotLight.name = "spotLight";
+  scene.add(spotLight);
+
+  const ambientLight = new THREE.AmbientLight(0x353535);
+  ambientLight.name = "ambientLight";
   scene.add(ambientLight);
-
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-  directionalLight.position.set(-1, 1, 1);
-  directionalLight.castShadow = true;
-  directionalLight.shadow.mapSize.width = 2048;
-  directionalLight.shadow.mapSize.height = 2048;
-  scene.add(directionalLight);
-
   createMap();
 
   setupEventListeners();
