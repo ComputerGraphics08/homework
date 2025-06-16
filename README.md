@@ -1,9 +1,15 @@
 [0616] final.js + main.html
-
+https://computergraphics08.github.io/homework/project/main.html
 
 # 변경사항
 1. 왕관 추가
 2. 점프 중복 방지
+
+
+
+
+
+
 
 
 ---------------------------------------------------------
